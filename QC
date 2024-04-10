@@ -1,0 +1,29 @@
+library(dplyr)
+library(Seurat)
+library(patchwork)
+
+lookup = read.csv("/cellfile/datapublic/ftitztei/Rscripts/TCpackage/data/SC_2023/MH-108-sequencing_ID.csv")
+
+## biomart lookup between ensembl and mgi symbols
+ensembl <- useMart("ensembl", dataset = "mmusculus_gene_ensembl")#, host = "uswest.ensembl.org")
+
+attributes <- listAttributes(ensembl)
+biomart <- getBM(attributes = c("ensembl_gene_id","entrezgene_id", "mgi_symbol"),
+                 mart=ensembl)
+biomart <- biomart[which(!is.na(biomart$entrezgene)),]
+biomart <- biomart[complete.cases(biomart),]
+
+#load data
+seq.data.239246 = Read10X(data.dir = "/cellfile/datapublic/ftitztei/Rscripts/TCpackage/data/SC_2023/multi/S242614_multicount/per_sample_outs/239246/count/sample_filtered_feature_bc_matrix/")
+# Initialize the Seurat object with the raw (non-normalized data)
+seq.239246 = CreateSeuratObject(counts = seq.data.239246, project = "Sequencing_Data_239246", min.cells = 0, min.features = 0)
+
+#merge SeuratObjects
+seq.combined = merge(seq.239237, y = c(seq.239238, seq.239243, seq.239244, seq.239245, seq.239246), add.cell.ids = c("239237","239238","239243","239244","239245","239246"), project = "Sequencing Data")
+head(colnames(seq.combined))
+table(seq.combined$orig.ident)
+
+#Quality Control
+seq.combined[["percent.mt"]] = PercentageFeatureSet(seq.combined, pattern = "^MT-")
+#Visualize QC metrics as violiin plot
+VlnPlot(seq.combined, features = c("nFeatures_RNA", "nCounts_RNA", "percent.mt", ncol = 3))
